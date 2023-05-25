@@ -1,6 +1,5 @@
 package tetris
 
-import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 
 abstract class Block(x: Int, y: Int) {
@@ -9,65 +8,42 @@ abstract class Block(x: Int, y: Int) {
 
     open val color: Color = Color.BLACK
 
-    abstract val parts: Array<BlockPart>
+    // The relative coordinates of the squares that make one block
+    abstract val offsets: MutableList<Vector>
 
-    // Drops the block down by one. If it is blocked, returns false
-    fun dropDown(): Boolean {
-        Game.unlockSlots(this)
-
-        return if (Game.canMoveTo(this) { vector -> vector + Vector.down() }) {
-            position.y++
-            Game.lockSlots(this)
-            true
-        } else {
-            Game.lockSlots(this)
-            false
-        }
-    }
-
-    // Forces the block to move, no matter if it is blocked
+    // Moves the block in the given direction
     fun move(direction: Vector) {
-        Game.unlockSlots(this)
         position += direction
-        Game.lockSlots(this)
     }
 
+    // Rotates the block in the given direction
     open fun rotate(right: Boolean) {
-        Game.unlockSlots(this)
-        for (part in parts) {
-            if (right) part.offset = Vector.rotateRight(part.offset)
-            else part.offset = Vector.rotateLeft(part.offset)
+        for (index in offsets.indices) {
+            if (right) offsets[index] = Vector.rotateRight(offsets[index])
+            else offsets[index] = Vector.rotateLeft(offsets[index])
         }
-        Game.lockSlots(this)
     }
 
-    fun draw(gc: GraphicsContext) {
-        /*gc.fill = color
-        for (part in parts) {
-            if (part.destroyed) continue
-            gc.fillRect(
-                Game.gameScale * (position.x + part.offset.x),
-                Game.gameScale * (position.y + part.offset.y),
-                Game.gameScale,
-                Game.gameScale
-            )
-        }*/
+    // Updates the block offsets if a given line was destroyed
+    fun updateOffsets(removedLineY: Int) {
+        // Remove offsets that were in the line
+        offsets.removeIf { o -> position.y + o.y == removedLineY }
+        // Move offsets down above the line
+        offsets.map { o ->
+            if (position.y + o.y < removedLineY) o.y++
+            else o
+        }
     }
-}
-
-class BlockPart(x: Int, y: Int) {
-    var offset = Vector(x, y)
-    var destroyed = false
 }
 
 class OBlock(x: Int, y: Int) : Block(x, y) {
     override val color: Color = Color.YELLOW
 
-    override val parts: Array<BlockPart> = arrayOf(
-        BlockPart(0, 0),
-        BlockPart(0, 1),
-        BlockPart(1, 0),
-        BlockPart(1, 1),
+    override val offsets: MutableList<Vector> = mutableListOf(
+        Vector(0, 0),
+        Vector(0, 1),
+        Vector(1, 0),
+        Vector(1, 1),
     )
 
     override fun rotate(right: Boolean) {}
@@ -76,65 +52,65 @@ class OBlock(x: Int, y: Int) : Block(x, y) {
 class IBlock(x: Int, y: Int) : Block(x, y) {
     override val color: Color = Color.BLUE
 
-    override val parts: Array<BlockPart> = arrayOf(
-        BlockPart(0, -2),
-        BlockPart(0, -1),
-        BlockPart(0, 0),
-        BlockPart(0, 1),
+    override val offsets: MutableList<Vector> = mutableListOf(
+        Vector(0, -2),
+        Vector(0, -1),
+        Vector(0, 0),
+        Vector(0, 1),
     )
 }
 
 class SBlock(x: Int, y: Int) : Block(x, y) {
     override val color: Color = Color.GREEN
 
-    override val parts: Array<BlockPart> = arrayOf(
-        BlockPart(0, 0),
-        BlockPart(1, 0),
-        BlockPart(-1, 1),
-        BlockPart(0, 1),
+    override val offsets: MutableList<Vector> = mutableListOf(
+        Vector(0, 0),
+        Vector(1, 0),
+        Vector(-1, 1),
+        Vector(0, 1),
     )
 }
 
 class ZBlock(x: Int, y: Int) : Block(x, y) {
     override val color: Color = Color.RED
 
-    override val parts: Array<BlockPart> = arrayOf(
-        BlockPart(0, 0),
-        BlockPart(-1, 0),
-        BlockPart(1, 1),
-        BlockPart(0, 1),
+    override val offsets: MutableList<Vector> = mutableListOf(
+        Vector(0, 0),
+        Vector(-1, 0),
+        Vector(1, 1),
+        Vector(0, 1),
     )
 }
 
 class TBlock(x: Int, y: Int) : Block(x, y) {
     override val color: Color = Color.PURPLE
 
-    override val parts: Array<BlockPart> = arrayOf(
-        BlockPart(-1, 0),
-        BlockPart(0, 0),
-        BlockPart(1, 0),
-        BlockPart(0, 1),
+    override val offsets: MutableList<Vector> = mutableListOf(
+        Vector(-1, 0),
+        Vector(0, 0),
+        Vector(1, 0),
+        Vector(0, 1),
     )
 }
 
 class LBlock(x: Int, y: Int) : Block(x, y) {
     override val color: Color = Color.ORANGE
 
-    override val parts: Array<BlockPart> = arrayOf(
-        BlockPart(0, -1),
-        BlockPart(0, 0),
-        BlockPart(0, 1),
-        BlockPart(1, 1),
+    override val offsets: MutableList<Vector> = mutableListOf(
+        Vector(0, -1),
+        Vector(0, 0),
+        Vector(0, 1),
+        Vector(1, 1),
     )
 }
 
 class FBlock(x: Int, y: Int) : Block(x, y) {
     override val color: Color = Color.DARKBLUE
 
-    override val parts: Array<BlockPart> = arrayOf(
-        BlockPart(0, -1),
-        BlockPart(1, -1),
-        BlockPart(0, 0),
-        BlockPart(0, 1),
+    override val offsets: MutableList<Vector> = mutableListOf(
+        Vector(0, -1),
+        Vector(1, -1),
+        Vector(0, 0),
+        Vector(0, 1),
     )
 }

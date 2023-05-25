@@ -1,5 +1,6 @@
 package tetris
 
+// Class representing size or a position on the grid
 data class Vector(var x: Int, var y: Int) {
     companion object {
         fun down(): Vector {

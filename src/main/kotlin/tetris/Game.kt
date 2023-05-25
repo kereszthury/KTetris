@@ -7,10 +7,15 @@ import javafx.scene.paint.Color
 import kotlin.random.Random
 
 object Game {
-    val gameScale = 30.0
-    private val gridSize = Vector(10, 15)
+    private const val startUpdateTimeMs = 500
+    private val grid = Grid(10, 15)
 
-    private var updateIntervalMs = 500
+    // Variables used for drawing on canvas
+    var drawOffset = Vector(0,0)
+    var gameScale = 30.0
+
+    var updateIntervalMs = startUpdateTimeMs
+        private set
 
     var started = false
         private set
@@ -18,189 +23,150 @@ object Game {
     var points = 0
         private set
 
-    var activeBlock: Block? = null
-        private set
+    // The block that is currently falling
+    private var activeBlock: Block? = null
 
-    private val droppedBlocks = mutableListOf<Block>()
+    // List of different block types
     private val startBlocks = listOf(
-        {x: Int, y: Int -> OBlock(x,y)},
-        {x: Int, y: Int -> IBlock(x,y)},
-        {x: Int, y: Int -> SBlock(x,y)},
-        {x: Int, y: Int -> ZBlock(x,y)},
-        {x: Int, y: Int -> TBlock(x,y)},
-        {x: Int, y: Int -> LBlock(x,y)},
-        {x: Int, y: Int -> FBlock(x,y)},
+        { x: Int, y: Int -> OBlock(x, y) },
+        { x: Int, y: Int -> IBlock(x, y) },
+        { x: Int, y: Int -> SBlock(x, y) },
+        { x: Int, y: Int -> ZBlock(x, y) },
+        { x: Int, y: Int -> TBlock(x, y) },
+        { x: Int, y: Int -> LBlock(x, y) },
+        { x: Int, y: Int -> FBlock(x, y) },
     )
 
-    private val occupiedSlots = arrayOfNulls<BlockPart?>(gridSize.x * gridSize.y)
-
-    fun areSlotsFree(vararg slots: Vector): Boolean {
-        for (slot in slots) {
-            if (getSlot(slot) != null) return false
-        }
-        return true
-    }
-
-    fun lockSlots(block: Block) {
-        for (part in block.parts) {
-            if (!part.destroyed) {
-                val vector = part.offset + block.position
-                if (vectorsInGrid(vector)) {
-                    occupiedSlots[gridSize.x * vector.y + vector.x] = part
-                }
-            }
-        }
-    }
-
-    fun unlockSlots(block: Block) {
-        for (index in occupiedSlots.indices) {
-            if (block.parts.contains(occupiedSlots[index])){
-                occupiedSlots[index] = null
-            }
-        }
-    }
-
-    fun vectorsInGrid(vararg positions: Vector): Boolean {
-        for (position in positions) {
-            if (position.x < 0 || position.x >= gridSize.x || position.y < 0){
-                return false
-            }
-        }
-        return true
-    }
-
-    fun getSlot(position: Vector): BlockPart? {
-        return if (!vectorsInGrid(position)) null
-        else occupiedSlots[gridSize.x * position.y + position.x]
-    }
-
+    // Starts a new game
     fun start() {
         started = true
+        updateIntervalMs = startUpdateTimeMs
         points = 0
-        droppedBlocks.clear()
+        grid.clear()
         activeBlock = null
     }
 
+    // Updates the game, drops down the block, spawns a new one if last got down, clears full lines
     fun tick() {
         if (!started) return
 
-        if (activeBlock == null)  getNewBlock()
+        if (activeBlock == null) getNewBlock()
 
-        if (!activeBlock!!.dropDown()) {
+        if (!dropDown()) {
             activeBlock = null
-            // TODO check for destroyed blocks, clear list if all parts destroyed
-
-            /*var yCheck = gridSize.y
-            while (yCheck >= 0) {
-                // TODO MAKE A 2D GRID WHERE BLOCKPARTS CAN LOCK THE PLACE BEFOR MOVEMENT BLOCK UNLOCKS ITS POSITION THEN CHECKS IF CAN MOVE MOVE AFTER THAT LOCK ITS PLACE arrayOf[][]Blockpart
-            }*/
+            checkForFullLines()
         }
     }
 
     // Drops the block as down as possible
-    fun dropToBottom() {
+    private fun dropToBottom() {
         if (activeBlock == null) return
         while (true) {
-            if (!activeBlock!!.dropDown()) {
+            if (!dropDown()) {
                 activeBlock = null
+                checkForFullLines()
                 return
             }
         }
     }
 
+    // Drops the active block down by one. If it is blocked, returns false
+    private fun dropDown(): Boolean {
+        if (activeBlock == null) return false
+        grid.unlockCells(activeBlock!!)
+
+        return if (grid.canGoTo(activeBlock) { vector -> vector + Vector.down() }) {
+            activeBlock!!.move(Vector.down())
+            grid.lockCells(activeBlock!!)
+            true
+        } else {
+            grid.lockCells(activeBlock!!)
+            false
+        }
+    }
+
+    // Asks the grid to remove the full lines and if any is removed, increases score and game speed
+    private fun checkForFullLines(){
+        val destroyedLines = grid.destroyFullLines()
+        points += grid.width * destroyedLines
+        updateIntervalMs -= 20 * destroyedLines
+    }
+
+    // Spawns in a new block, if it can't drop, then it's game over
     private fun getNewBlock() {
-        activeBlock = startBlocks[Random.nextInt(from = 0, until = startBlocks.size)].invoke(gridSize.x / 2 - 1, -2)
-        droppedBlocks.add(activeBlock!!)
+        activeBlock = startBlocks[Random.nextInt(from = 0, until = startBlocks.size)].invoke(grid.width / 2 - 1, -2)
+        grid.droppedBlocks.add(activeBlock!!)
 
-        if (!canMoveTo(activeBlock!!) { vector -> (vector + Vector.down()) }){
-            // TODO game over
-            started = false
+        if (!grid.canGoTo(activeBlock!!) { vector -> (vector + Vector.down()) }) {
+            gameOver()
         }
     }
 
-    fun canMoveTo(block: Block?, translate: (Vector) -> (Vector)): Boolean {
-        if (block == null) return false
-
-        /*var copy = block.parts.clone()
-        copy.map { translate }
-
-        if (vectorsInGrid(copy))*/
-
-        for (part in block.parts) {
-            val nextPartPosition = block.position + translate(part.offset)
-
-            if (nextPartPosition.x < 0 || nextPartPosition.x >= gridSize.x || nextPartPosition.y >= gridSize.y){
-                return false
-            }
-
-            for (droppedBlock in droppedBlocks) {
-                if (droppedBlock == block) continue
-
-                for (droppedPart in droppedBlock.parts) {
-                    if (droppedPart.destroyed) continue
-
-                    val droppedPartPosition = droppedBlock.position + droppedPart.offset
-                    if (droppedPartPosition == nextPartPosition) {
-                        return false
-                    }
-                }
-            }
-        }
-
-        return true
+    private fun gameOver() {
+        started = false
     }
 
+    // Class used to store actions to player input
+    private class PlayerAction(val keyCode: KeyCode, val translate: (Vector) -> Vector, val method: (() -> Unit)?)
+
+    private val actions = arrayOf(
+        PlayerAction(KeyCode.LEFT, { vector -> (vector + Vector.left()) }, { activeBlock?.move(Vector.left()) }),
+        PlayerAction(KeyCode.RIGHT, { vector -> (vector + Vector.right()) }, { activeBlock?.move(Vector.right()) }),
+        PlayerAction(KeyCode.DOWN, Vector::rotateRight) { activeBlock?.rotate(true) },
+        PlayerAction(KeyCode.UP, Vector::rotateLeft) { activeBlock?.rotate(false) },
+        PlayerAction(KeyCode.SPACE, { vector -> (vector + Vector.down()) }, { dropToBottom() }),
+    )
+
+    // Keyboard input handling
     fun handleInput(e: KeyEvent) {
         if (activeBlock == null) return
 
-        // TODO put in map
-        when (e.code) {
-            KeyCode.LEFT -> {
-                if (canMoveTo(activeBlock) { vector -> (vector + Vector.left()) }) {
-                    activeBlock?.move(Vector.left())
-                }
-            }
-            KeyCode.RIGHT -> {
-                if (canMoveTo(activeBlock) { vector -> (vector + Vector.right()) }) {
-                    activeBlock?.move(Vector.right())
-                }
-            }
-            KeyCode.DOWN -> {
-                if (canMoveTo(activeBlock, Vector::rotateRight)) {
-                    activeBlock?.rotate(true)
-                }
-            }
-            KeyCode.UP -> {
-                if (canMoveTo(activeBlock, Vector::rotateLeft)) {
-                    activeBlock?.rotate(false)
-                }
-            }
-            KeyCode.SPACE -> {
-                dropToBottom()
-            }
+        grid.unlockCells(activeBlock!!)
 
-            else -> {}
+        val action = actions.find { a -> a.keyCode == e.code }
+        if (action != null && grid.canGoTo(activeBlock, action.translate)) {
+            action.method?.invoke()
         }
+
+        if (activeBlock != null) grid.lockCells(activeBlock!!)
     }
 
+    // Draws the game on the canvas
     fun draw(gc: GraphicsContext) {
-        for (block in droppedBlocks) {
-            block.draw(gc)
-        }
+        drawBlocks(gc)
         drawGrid(gc)
+        drawOutline(gc)
     }
 
+    // Draws the grid between cells
     private fun drawGrid(gc: GraphicsContext) {
-        gc.stroke = Color.BLACK
-        gc.fill = Color.BLACK
-        gc.lineWidth = gameScale / 15.0
+        gc.stroke = Color.DARKGRAY
+        gc.lineWidth = gameScale / 20.0
 
-        for (x in 0 until gridSize.x) {
-            for (y in 0 until gridSize.y) {
-                gc.strokeRect(gameScale * x, gameScale * y, gameScale, gameScale)
-
-                if (getSlot(Vector(x,y)) != null) gc.fillRect(gameScale * x, gameScale * y, gameScale, gameScale)
+        for (x in 0 until grid.width) {
+            for (y in 0 until grid.height) {
+                gc.strokeRect(gameScale * x + drawOffset.x, gameScale * y + drawOffset.y, gameScale, gameScale)
             }
         }
+    }
+
+    // Draws out the blocks
+    private fun drawBlocks(gc: GraphicsContext) {
+        for (x in 0 until grid.width) {
+            for (y in 0 until grid.height) {
+                val block = grid.getCell(Vector(x, y))
+                if (block != null) {
+                    gc.fill = block.color
+                    gc.fillRect(gameScale * x + drawOffset.x, gameScale * y + drawOffset.y, gameScale, gameScale)
+                }
+            }
+        }
+    }
+
+    // Draws out the outline
+    private fun drawOutline(gc: GraphicsContext) {
+        gc.stroke = Color.BLACK
+        gc.lineWidth = gameScale / 5.0
+        gc.strokeRect(0.0 + drawOffset.x, 0.0 + drawOffset.y, gameScale * grid.width, gameScale * grid.height)
     }
 }
