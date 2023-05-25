@@ -7,6 +7,6 @@ module com.example.ktetris {
     requires org.kordamp.bootstrapfx.core;
     requires com.almasb.fxgl.all;
 
-    opens com.example.ktetris to javafx.fxml;
-    exports com.example.ktetris;
+    opens tetris to javafx.fxml;
+    exports tetris;
 }
