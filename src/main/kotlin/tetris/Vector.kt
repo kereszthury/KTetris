@@ -3,25 +3,15 @@ package tetris
 // Class representing size or a position on the grid
 data class Vector(var x: Int, var y: Int) {
     companion object {
-        fun down(): Vector {
-            return Vector(0, 1)
-        }
+        val down = Vector(0, 1)
 
-        fun left(): Vector {
-            return Vector(-1, 0)
-        }
+        val left = Vector(-1, 0)
 
-        fun right(): Vector {
-            return Vector(1, 0)
-        }
+        val right = Vector(1, 0)
 
-        fun rotateRight(vector: Vector): Vector {
-            return Vector(vector.y, -vector.x)
-        }
+        val rotateRight: (Vector) -> Vector = { vector -> Vector(vector.y, -vector.x) }
 
-        fun rotateLeft(vector: Vector): Vector {
-            return Vector(-vector.y, vector.x)
-        }
+        val rotateLeft: (Vector) -> Vector = { vector -> Vector(-vector.y, vector.x) }
     }
 
     operator fun plus(other: Vector): Vector {

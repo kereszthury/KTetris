@@ -63,7 +63,7 @@ class TetrisApplication : Application() {
             }
         }.start()
 
-        Game.drawOffset = Vector(25,100)
+        Game.drawOffset = Vector(25, 100)
         mainStage.isResizable = false
         mainStage.show()
     }
@@ -71,12 +71,10 @@ class TetrisApplication : Application() {
     // Game loop
     private fun update(currentTimeNS: Long) {
         val elapsedMs = (currentTimeNS - lastFrameTimeNs) / 1_000_000
-
         if (elapsedMs < Game.updateIntervalMs) return
         lastFrameTimeNs = currentTimeNS
 
         Game.tick()
-
         drawGraphics()
     }
 

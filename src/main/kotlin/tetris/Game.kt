@@ -11,15 +11,13 @@ object Game {
     private val grid = Grid(10, 15)
 
     // Variables used for drawing on canvas
-    var drawOffset = Vector(0,0)
+    var drawOffset = Vector(0, 0)
     var gameScale = 30.0
 
     var updateIntervalMs = startUpdateTimeMs
         private set
-
     var started = false
         private set
-
     var points = 0
         private set
 
@@ -58,6 +56,11 @@ object Game {
         }
     }
 
+    // Ends the game
+    private fun gameOver() {
+        started = false
+    }
+
     // Drops the block as down as possible
     private fun dropToBottom() {
         if (activeBlock == null) return
@@ -75,8 +78,8 @@ object Game {
         if (activeBlock == null) return false
         grid.unlockCells(activeBlock!!)
 
-        return if (grid.canGoTo(activeBlock) { vector -> vector + Vector.down() }) {
-            activeBlock!!.move(Vector.down())
+        return if (grid.canGoTo(activeBlock) { vector -> vector + Vector.down }) {
+            activeBlock!!.move(Vector.down)
             grid.lockCells(activeBlock!!)
             true
         } else {
@@ -86,7 +89,7 @@ object Game {
     }
 
     // Asks the grid to remove the full lines and if any is removed, increases score and game speed
-    private fun checkForFullLines(){
+    private fun checkForFullLines() {
         val destroyedLines = grid.destroyFullLines()
         points += grid.width * destroyedLines
         updateIntervalMs -= 20 * destroyedLines
@@ -97,24 +100,20 @@ object Game {
         activeBlock = startBlocks[Random.nextInt(from = 0, until = startBlocks.size)].invoke(grid.width / 2 - 1, -2)
         grid.droppedBlocks.add(activeBlock!!)
 
-        if (!grid.canGoTo(activeBlock!!) { vector -> (vector + Vector.down()) }) {
+        if (!grid.canGoTo(activeBlock!!) { vector -> (vector + Vector.down) }) {
             gameOver()
         }
-    }
-
-    private fun gameOver() {
-        started = false
     }
 
     // Class used to store actions to player input
     private class PlayerAction(val keyCode: KeyCode, val translate: (Vector) -> Vector, val method: (() -> Unit)?)
 
     private val actions = arrayOf(
-        PlayerAction(KeyCode.LEFT, { vector -> (vector + Vector.left()) }, { activeBlock?.move(Vector.left()) }),
-        PlayerAction(KeyCode.RIGHT, { vector -> (vector + Vector.right()) }, { activeBlock?.move(Vector.right()) }),
-        PlayerAction(KeyCode.DOWN, Vector::rotateRight) { activeBlock?.rotate(true) },
-        PlayerAction(KeyCode.UP, Vector::rotateLeft) { activeBlock?.rotate(false) },
-        PlayerAction(KeyCode.SPACE, { vector -> (vector + Vector.down()) }, { dropToBottom() }),
+        PlayerAction(KeyCode.LEFT, { vector -> (vector + Vector.left) }, { activeBlock?.move(Vector.left) }),
+        PlayerAction(KeyCode.RIGHT, { vector -> (vector + Vector.right) }, { activeBlock?.move(Vector.right) }),
+        PlayerAction(KeyCode.DOWN, Vector.rotateRight) { activeBlock?.rotate(Vector.rotateRight) },
+        PlayerAction(KeyCode.UP, Vector.rotateLeft) { activeBlock?.rotate(Vector.rotateLeft) },
+        PlayerAction(KeyCode.SPACE, { vector -> (vector + Vector.down) }, { dropToBottom() }),
     )
 
     // Keyboard input handling
@@ -143,8 +142,8 @@ object Game {
         gc.stroke = Color.DARKGRAY
         gc.lineWidth = gameScale / 20.0
 
-        for (x in 0 until grid.width) {
-            for (y in 0 until grid.height) {
+        (0 until grid.width).forEach { x ->
+            (0 until grid.height).forEach { y ->
                 gc.strokeRect(gameScale * x + drawOffset.x, gameScale * y + drawOffset.y, gameScale, gameScale)
             }
         }
@@ -152,10 +151,9 @@ object Game {
 
     // Draws out the blocks
     private fun drawBlocks(gc: GraphicsContext) {
-        for (x in 0 until grid.width) {
-            for (y in 0 until grid.height) {
-                val block = grid.getCell(Vector(x, y))
-                if (block != null) {
+        (0 until grid.width).forEach { x ->
+            (0 until grid.height).forEach { y ->
+                grid.getCell(Vector(x, y))?.let { block ->
                     gc.fill = block.color
                     gc.fillRect(gameScale * x + drawOffset.x, gameScale * y + drawOffset.y, gameScale, gameScale)
                 }

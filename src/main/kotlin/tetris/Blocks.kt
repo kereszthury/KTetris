@@ -17,11 +17,8 @@ abstract class Block(x: Int, y: Int) {
     }
 
     // Rotates the block in the given direction
-    open fun rotate(right: Boolean) {
-        for (index in offsets.indices) {
-            if (right) offsets[index] = Vector.rotateRight(offsets[index])
-            else offsets[index] = Vector.rotateLeft(offsets[index])
-        }
+    open fun rotate(rotation: (Vector) -> Vector) {
+        (0 until offsets.size).forEach { index -> offsets[index] = rotation(offsets[index]) }
     }
 
     // Updates the block offsets if a given line was destroyed
@@ -29,10 +26,7 @@ abstract class Block(x: Int, y: Int) {
         // Remove offsets that were in the line
         offsets.removeIf { o -> position.y + o.y == removedLineY }
         // Move offsets down above the line
-        offsets.map { o ->
-            if (position.y + o.y < removedLineY) o.y++
-            else o
-        }
+        offsets.map { o -> if (position.y + o.y < removedLineY) o.y++ }
     }
 }
 
@@ -46,7 +40,7 @@ class OBlock(x: Int, y: Int) : Block(x, y) {
         Vector(1, 1),
     )
 
-    override fun rotate(right: Boolean) {}
+    override fun rotate(rotation: (Vector) -> Vector) {}
 }
 
 class IBlock(x: Int, y: Int) : Block(x, y) {
