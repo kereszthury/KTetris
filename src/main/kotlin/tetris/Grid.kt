@@ -46,7 +46,7 @@ class Grid(val width: Int, val height: Int) {
 
     // Returns true if a block can be translated to a given place in the grid
     fun canGoTo(block: Block?, translate: (Vector) -> (Vector)): Boolean {
-        if (block == null) return false
+        block ?: return false
         val vectorList = mutableListOf<Vector>()
         vectorList.addAll(block.offsets)
         val vectorArray = vectorList.map(translate).map { vector -> vector + block.position }.toTypedArray()

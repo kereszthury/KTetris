@@ -48,9 +48,11 @@ object Game {
     fun tick() {
         if (!started) return
 
-        if (activeBlock == null) getNewBlock()
+        activeBlock = activeBlock ?: getNewBlock()
 
-        if (!dropDown()) {
+        if (!grid.canGoTo(activeBlock) { vector -> (vector + Vector.down) }) {
+            gameOver()
+        } else if (!dropDown(activeBlock)) {
             activeBlock = null
             checkForFullLines()
         }
@@ -63,9 +65,9 @@ object Game {
 
     // Drops the block as down as possible
     private fun dropToBottom() {
-        if (activeBlock == null) return
+        activeBlock ?: return
         while (true) {
-            if (!dropDown()) {
+            if (!dropDown(activeBlock)) {
                 activeBlock = null
                 checkForFullLines()
                 return
@@ -73,17 +75,17 @@ object Game {
         }
     }
 
-    // Drops the active block down by one. If it is blocked, returns false
-    private fun dropDown(): Boolean {
-        if (activeBlock == null) return false
-        grid.unlockCells(activeBlock!!)
+    // Drops the given block down by one. If it is blocked, returns false
+    private fun dropDown(block: Block?): Boolean {
+        block ?: return false
+        grid.unlockCells(block)
 
-        return if (grid.canGoTo(activeBlock) { vector -> vector + Vector.down }) {
-            activeBlock!!.move(Vector.down)
-            grid.lockCells(activeBlock!!)
+        return if (grid.canGoTo(block) { vector -> vector + Vector.down }) {
+            block.move(Vector.down)
+            grid.lockCells(block)
             true
         } else {
-            grid.lockCells(activeBlock!!)
+            grid.lockCells(block)
             false
         }
     }
@@ -95,14 +97,12 @@ object Game {
         updateIntervalMs -= 20 * destroyedLines
     }
 
-    // Spawns in a new block, if it can't drop, then it's game over
-    private fun getNewBlock() {
-        activeBlock = startBlocks[Random.nextInt(from = 0, until = startBlocks.size)].invoke(grid.width / 2 - 1, -2)
-        grid.droppedBlocks.add(activeBlock!!)
+    // Spawns in a new block
+    private fun getNewBlock(): Block {
+        val newBlock = startBlocks[Random.nextInt(from = 0, until = startBlocks.size)].invoke(grid.width / 2 - 1, -2)
+        grid.droppedBlocks.add(newBlock)
 
-        if (!grid.canGoTo(activeBlock!!) { vector -> (vector + Vector.down) }) {
-            gameOver()
-        }
+        return newBlock
     }
 
     // Class used to store actions to player input
