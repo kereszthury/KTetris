@@ -50,9 +50,7 @@ object Game {
 
         activeBlock = activeBlock ?: getNewBlock()
 
-        if (!grid.canGoTo(activeBlock) { vector -> (vector + Vector.down) }) {
-            gameOver()
-        } else if (!dropDown(activeBlock)) {
+        if (!dropDown(activeBlock)) {
             activeBlock = null
             checkForFullLines()
         }
@@ -97,10 +95,14 @@ object Game {
         updateIntervalMs -= 20 * destroyedLines
     }
 
-    // Spawns in a new block
+    // Spawns in a new block, if it can't drop, then it's game over
     private fun getNewBlock(): Block {
         val newBlock = startBlocks[Random.nextInt(from = 0, until = startBlocks.size)].invoke(grid.width / 2 - 1, -2)
         grid.droppedBlocks.add(newBlock)
+
+        if (!grid.canGoTo(newBlock) { vector -> (vector + Vector.down) }) {
+            gameOver()
+        }
 
         return newBlock
     }
